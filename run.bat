@@ -1,12 +1,19 @@
 @echo off
-echo Systrace split start ,default threshold=250 MB
-echo please input your file path:
+echo input path:
 
-set threshold=15
-set SCRIPT_PATH=%1
+REM threshold config
+set threshold=70
+set/p SCRIPT_PATH=%1
 
-echo threashold=%threshold%, SCRIPT_PATH=%threshold%
+echo=
+echo  Config:
+echo    threashold = %threshold% MB
+echo    File path = %SCRIPT_PATH%
 
+echo=
+echo Split start ...
 python split_main.py -t %threshold% -p %SCRIPT_PATH%
 
+echo=
+echo Split done!!
 @pause

@@ -1,16 +1,21 @@
 # coding=utf-8
 
 '''
+[description]
 Systrace file cannot open when size more than 300MB when you put it into chrome.
 you should cut the big size file into some sub files which can be ok for chrome.
 this module will do that for you
+
 '''
+
 import argparse
+import sys
 import io
 import os
 from collections import OrderedDict
 
-OVERFLOW_SIZE_MB = 50  # MB
+print("Use {}\n".format(sys.version))
+DEBUG = False
 FLAG_TRACE_BEGIN = "tracer: nop"
 FLAG_TRACE_TAIL_INFO = (
     u"""
@@ -24,9 +29,9 @@ FLAG_TRACE_TAIL_INFO = (
 
 def get_file_size(path):
     if not os.path.exists(path):
-        raise Exception(path, "is not exist !!")
+        raise Exception(path, " is not exist !!")
     size = os.path.getsize(path)
-    print(path, "size: ", size, "Byte")
+    debug((path, "size: ", size >> 20, "MB"))
     return size
 
 
@@ -71,67 +76,77 @@ class SimpleSpliter(object):
 
     def main(self):
         if self.total_size_byte < self.threshold_size_byte:
-            print(
-                "The file size < overflow_size({} MB),no need split !!".format(
-                        (int)((self.threshold_size_byte / 1024) / 1024)))
+            print("The file size < overflow_size({} MB), no need split !!".format(
+                    str(self.threshold_size_byte >> 20)))
             return
         self.init_new_file_list()
         # split file
+        p_file_dir = OrderedDict()
+        for path, size in self.new_file_dir.items():
+            p_file_dir[open(path, "wb")] = size
 
-        new_file_one = io.open(self.new_file_dir.keys()[0], "w", encoding="utf-8")
-        new_file_two = io.open(self.new_file_dir.keys()[1], "w", encoding="utf-8")
+        max_file_count = len(p_file_dir)
+        last_file_head_filled = False
+        middle_file_head_filled = False
 
-        print("new_file_one", new_file_one, "new_file_two:", new_file_two)
-        with io.open(self.file_path, "r", encoding="utf-8") as old_file:
-            count = 0
-            second_file_head_filled = False
+        with open(self.file_path, "rb") as old_file:
+            file_index = 0
             for line in old_file:
                 self.cache_head_info(line)
-                if count == 0:
-                    new_file_one.write(line)
-                    if self.new_file_dir[self.new_file_dir.keys()[0]] > 0:
-                        self.new_file_dir[self.new_file_dir.keys()[0]] -= len(line)
+                cur_file = p_file_dir.keys()[file_index]
+                if file_index == 0:  # write tail only
+                    cur_file.write(line)
+                    if p_file_dir[cur_file] > 0:
+                        p_file_dir[cur_file] -= len(line)
                     else:
-                        new_file_one.write(FLAG_TRACE_TAIL_INFO)
-                        count = 1
-                elif count == 1:
-                    if not second_file_head_filled:
-                        new_file_two.writelines(self.head_info_list)
-                        new_file_two.write(line)
-                        second_file_head_filled = True
+                        cur_file.write(FLAG_TRACE_TAIL_INFO)
+                        file_index += 1
+                elif file_index == (max_file_count - 1):  # write head only
+                    if not last_file_head_filled:
+                        cur_file.writelines(self.head_info_list)
+                        cur_file.write(line)
+                        last_file_head_filled = True
                     else:
-                        new_file_two.write(line)
-                        self.new_file_dir[self.new_file_dir.keys()[1]] -= len(line)
+                        cur_file.write(line)
+                        p_file_dir[cur_file] -= len(line)
+                else:  # write head and tail
+                    if not middle_file_head_filled:
+                        cur_file.writelines(self.head_info_list)
+                        middle_file_head_filled = True
+                    cur_file.write(line)
+                    if p_file_dir[cur_file] > 0:
+                        p_file_dir[cur_file] -= len(line)
+                    else:
+                        cur_file.write(FLAG_TRACE_TAIL_INFO)
+                        file_index += 1
 
-        new_file_one.close()
-        new_file_two.close()
-
-
-def build_test():
-    file = "./test/testing_trace.html"
-    with open(file, "w+") as f:
-        for i in range(100):
-            f.write("{} haha many {}\n".format(i, "NB" * 50))
-            if i == 50:
-                f.write("# tracer: nop\n")
-        f.write(FLAG_TRACE_TAIL_INFO)
+        # close
+        for f in p_file_dir.keys():
+            print("\tWrite done: {}\n".format(f.name))
+            f.close()
 
 
 def get_arg():
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", "--threshold", type=int, dest="threshold",
                         help="split threshold size(MB)")
-    parser.add_argument("-p", "--path", type=str, dest="path", help="your systrace full path")
+    parser.add_argument("-p", "--path", type=str,
+                        dest="path", help="your systrace full path")
     args = parser.parse_args()
     threshold_size = args.threshold
     path = args.path
     if (not threshold_size) or (not path):
         raise Exception(
                 "threshold or path is None: threshold={},path={}".format(threshold_size, path))
-    print("threshold={},path={}".format(threshold_size, path))
+    debug("threshold={},path={}".format(threshold_size, path))
     replace_path = path.replace("\\", "/")
-    print("replace_path:", replace_path)
+    debug(("replaced_path:", replace_path))
     return threshold_size, replace_path
+
+
+def debug(msg):
+    if DEBUG:
+        print(msg)
 
 
 if __name__ == "__main__":

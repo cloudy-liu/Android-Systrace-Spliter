@@ -1,2 +1,7 @@
 # Android-Systrace-Spliter
-Split big systrace into small ones
+## How to use
+* double click run.bat
+* input your big systrace file
+* press enter key
+
+
