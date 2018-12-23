@@ -19,7 +19,7 @@ DEBUG = False
 FLAG_TRACE_BEGIN = "tracer: nop"
 FLAG_TRACE_TAIL_INFO = (
     u"""
-      </script>
+  </script>
 <!-- END TRACE -->
 </body>
 </html>
