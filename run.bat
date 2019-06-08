@@ -1,8 +1,10 @@
 @echo off
+
+echo [Android Systrace Split]
 echo input path:
 
-REM threshold config
-set threshold=70
+REM threshold config. Unit MB
+set threshold=20
 set/p SCRIPT_PATH=%1
 
 echo=
@@ -12,7 +14,7 @@ echo    File path = %SCRIPT_PATH%
 
 echo=
 echo Split start ...
-python split_main.py -t %threshold% -p %SCRIPT_PATH%
+python main.py -t %threshold% -p %SCRIPT_PATH%
 
 echo=
 echo Split done!!

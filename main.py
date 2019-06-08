@@ -6,6 +6,7 @@ Systrace file cannot open when size more than 300MB when you put it into chrome.
 you should cut the big size file into some sub files which can be ok for chrome.
 this module will do that for you
 
+@Author: cloudy.liuu@gmail.com
 '''
 
 import argparse
